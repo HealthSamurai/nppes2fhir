@@ -119,7 +119,9 @@
                ^PrintWriter w (PrintWriter. gzip)]
      (with-open [rdr (io/reader "data/npidata_pfile_20050523-20190609.csv")]
        (let [ls (line-seq rdr)
-             headers (mapv (fn [x] (str/replace (str/lower-case x) #"[^a-z0-9]+" "_"))
+             headers (mapv (fn [x] (str/replace
+                                    (str/replace (str/lower-case x) #"[^a-z0-9]+" "_")
+                                    #"_+$" ""))
                            (parse-line (first ls)))
              headers-idx (->> headers
                               (map-indexed (fn [i x] [i x]))
@@ -128,6 +130,7 @@
 
          ;; (println (pr-str headers))
          ;; (println (pr-str headers-idx))
+         (spit "columns.yaml" (str/join "\n" headers))
 
          ;; (println (str/join "\n" headers-idx))
          (doseq [x (if limit
