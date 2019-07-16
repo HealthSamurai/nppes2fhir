@@ -37,10 +37,13 @@
                                      (assert false (pr-str dsl)))))]
                   (fn [gget]
                     (when-let [v (gget (str/replace (:el dsl) #"^\." ""))]
-                      (let [vv (or (get idx (keyword v)) (get idx v))]
-                        (if (and (string? vv) (str/starts-with? vv "."))
-                          (gget (subs vv 1))
-                          vv)))))
+                      (let [vv (or (get idx (keyword v)) (get idx v))
+                            res (if (and (string? vv) (str/starts-with? vv "."))
+                                  (gget (subs vv 1))
+                                  vv)]
+                        (if (and res (not (str/blank? res)))
+                          res
+                          #_(println "Missed nucc code" v))))))
 
                 (= tp "each")
                 (let [r (:range dsl)
@@ -111,9 +114,53 @@
         (update (dec (count is)) #(str/replace % #"\"$" "")))))
 
 
+(defn gz-file-writer [file-name]
+  (let [^java.io.OutputStream out (clojure.java.io/output-stream file-name)
+        ^GZIPOutputStream gzip   (GZIPOutputStream. out)
+        ^PrintWriter w (PrintWriter. gzip)]
+    w))
 
-(defn dump [& [limit]]
-  (time
+(defn read-line-seq [file-name f]
+  (with-open [rdr (io/reader file-name)]
+    (f (line-seq rdr))))
+
+(defn header-index [l]
+  (->> (parse-line l)
+       (mapv (fn [x] (->
+                      (str/lower-case x)
+                      (str/replace  #"[^a-z0-9]+" "_")
+                      (str/replace #"_+$" ""))))
+       (map-indexed (fn [i x] [i x]))
+       (reduce (fn [acc [i x]]
+                 (assoc acc x i)) {})))
+
+(defn dump [page-size & [num-pages]]
+  (time 
+   (read-line-seq "data/npidata_pfile_20050523-20190609.csv"
+    (fn [ls]
+      (let [headers-idx (header-index (first ls))]
+        (loop [cnt 0
+               pg-cnt 1
+               ^java.io.Writer w (gz-file-writer "result/practitioners-0000001.ndjson.gz")
+               [l & ls] (rest ls)]
+          (if (and num-pages (> pg-cnt num-pages))
+            (do (.close w)
+                (println "Done."))
+            (let [[pg-cnt cnt ^java.io.Writer w] (if (= cnt page-size)
+                                   (do (.close w)
+                                       (println "Page: " pg-cnt)
+                                       [(inc pg-cnt) 0 (gz-file-writer (format "result/practitioners-%07d.ndjson.gz" (inc pg-cnt)))])
+                                   [pg-cnt cnt w])]
+              (let [data (parse-line l)]
+                (if (= "1" (second data))
+                  (do 
+                    (.write w ^String (cheshire.core/generate-string (to-practitioner headers-idx data)))
+                    (.write w "\n")
+                    (recur (inc cnt) pg-cnt w ls))
+                  (recur cnt pg-cnt w ls))))))
+        ))))
+
+  #_(time
    (with-open [^java.io.OutputStream out (clojure.java.io/output-stream "practitioner.ndjson.gz")
                ^GZIPOutputStream gzip   (GZIPOutputStream. out)
                ^PrintWriter w (PrintWriter. gzip)]
@@ -147,7 +194,7 @@
 
 
 (comment 
-  (dump 10)
+  (dump 100000 10)
   (dump)
   )
 
