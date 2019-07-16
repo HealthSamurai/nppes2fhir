@@ -8,7 +8,7 @@
    [java.io PrintWriter InputStreamReader ByteArrayInputStream ByteArrayOutputStream]
    [java.util.zip GZIPInputStream GZIPOutputStream]))
 
-(set! *warn-on-reflection*)
+(set! *warn-on-reflection* true)
 
 (defonce nucc-idx
   (with-open [rdr (io/reader "data/nucc_taxonomy_191.csv")]
