@@ -159,6 +159,9 @@
        (reduce (fn [acc [i x]]
                  (assoc acc x i)) {})))
 
+(defn practitioner? [data]
+  (= "1" (second data)))
+
 (defn dump-samples [data-file dump-file]
   (time
    (with-open [w (io/writer dump-file)]
@@ -173,42 +176,64 @@
                             (.write w ^String (clj-yaml.core/generate-string item))
                             (.write w "\n---\n")))))))))
 
-(defn practitioner? [data]
-  (= "1" (second data)))
+
+(defn next-writer [tp idx]
+  (gz-file-writer (format "result/%s-%07d.ndjson.gz" tp idx)))
 
 (defn dump [page-size & [num-pages]]
   (time
    (read-line-seq "data/npidata_pfile_20050523-20190609.csv"
                   (fn [ls]
                     (let [headers-idx (header-index (first ls))]
-                      (loop [cnt 0
-                             pg-cnt 1
-                             ^java.io.Writer w (gz-file-writer "result/practitioners-0000001.ndjson.gz")
+                      (loop [pr-cnt 0  pr-pg-cnt 1  ^java.io.Writer pr-w (next-writer "practitioners" 1)
+                             org-cnt 0 org-pg-cnt 1 ^java.io.Writer org-w (next-writer "organizations" 1)
                              [l & ls] (rest ls)]
-                        (if (and num-pages (> pg-cnt num-pages))
-                          (do (.close w)
-                              (println "Done."))
-                          (let [[pg-cnt cnt ^java.io.Writer w] (if (= cnt page-size)
-                                                                 (do (.close w)
-                                                                     (println "Page: " pg-cnt)
-                                                                     [(inc pg-cnt) 0 (gz-file-writer (format "result/practitioners-%07d.ndjson.gz" (inc pg-cnt)))])
-                                                                 [pg-cnt cnt w])]
-                            (let [data (parse-line l)]
-                              (if (practitioner? data)
-                                (do
-                                  (.write w ^String (cheshire.core/generate-string (to-practitioner headers-idx data)))
-                                  (.write w "\n")
-                                  (recur (inc cnt) pg-cnt w ls))
-                                (recur cnt pg-cnt w ls)))))))))))
+                        (when l
+                          (let [data (parse-line l)]
+                            (if (practitioner? data)
+                              (do
+                                (.write pr-w ^String (cheshire.core/generate-string (to-practitioner headers-idx data)))
+                                (.write pr-w "\n"))
+
+                              (do
+                                (.write org-w ^String (cheshire.core/generate-string (to-organization headers-idx data)))
+                                (.write org-w "\n")))
+                            (let [[pr-pg-cnt pr-cnt ^java.io.Writer pr-w] (if (>= pr-cnt page-size)
+                                                                            (do (.close pr-w)
+                                                                                (println "Practitioner page: " pr-pg-cnt)
+                                                                                [(inc pr-pg-cnt) -1 (next-writer "practitioners" (inc pr-pg-cnt))])
+                                                                            [pr-pg-cnt pr-cnt pr-w])
+
+                                  [org-pg-cnt org-cnt ^java.io.Writer org-w] (if (>= org-cnt page-size)
+                                                                               (do (.close org-w)
+                                                                                   (println "Organization page: " org-pg-cnt)
+                                                                                   [(inc org-pg-cnt) -1 (next-writer "organizations" (inc org-pg-cnt))])
+                                                                               [org-pg-cnt org-cnt org-w])
+                                  pr-cnt (if (practitioner? data) (inc pr-cnt) pr-cnt)
+                                  org-cnt (if (not (practitioner? data)) (inc org-cnt) org-cnt)]
+                              (if (or (and num-pages
+                                           (> pr-pg-cnt num-pages)
+                                           (> org-pg-cnt num-pages))
+                                      (empty? ls))
+
+                                (do (.close pr-w)
+                                    (.close org-w)
+                                    (println "Done."))
+
+                                (recur pr-cnt pr-pg-cnt pr-w
+                                       org-cnt org-pg-cnt org-w
+                                       ls)))))))))))
 
 
 (comment
-  (dump 100 1)
+  (dump 100000)
+
+  ;; datasample just head -n 1000 of npi data
+  (dump-samples "data/datasample.csv" "sample.yaml")
 
   (dump)
   )
 
-(dump-samples "data/datasample.csv" "sample.yaml")
 
 
 
