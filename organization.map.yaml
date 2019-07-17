@@ -1,0 +1,83 @@
+resourceType: Organization
+id: .npi
+name: .provider_organization_name_legal_business_name
+
+type:
+  $type: each
+  range: 15
+  each:
+    _license: .provider_license_number_{i}
+    _state: .provider_license_number_state_code_{i}
+    text:
+      $type: map
+      el: .healthcare_provider_taxonomy_code_{i}
+      ref: nucc
+    coding:
+      - code: .healthcare_provider_taxonomy_code_{i}
+        system: NUCC
+
+identifier:
+  $type: concat
+  items:
+  - value: .npi
+    system: NPI
+  - $type: each
+    range: 50
+    each:
+      value: .other_provider_identifier_{i}
+      _state: .other_provider_identifier_state_{i}
+      # issuer: .other_provider_identifier_issuer_{i}
+      system:
+        $type: map
+        el: .other_provider_identifier_type_code_{i}
+        map:
+          '01': .other_provider_identifier_issuer_{i}
+          '02': MEDICARE UPIN
+          '04': MEDICARE ID-TYPE UNSPECIFIED
+          '05': MEDICAID
+          '06': MEDICARE OSCAR/CERTIFICATION
+          '07': MEDICARE NSC
+          '08': MEDICARE PIN
+
+telecom:
+  - system: phone
+    use: work
+    value: .provider_business_practice_location_address_telephone_number
+  - system: phone
+    use: mailing
+    value: .provider_business_mailing_address_telephone_number
+  - system: fax
+    use: work
+    value: .provider_business_practice_location_address_fax_number
+  - system: fax
+    use: mailing
+    value: .provider_business_mailing_address_fax_number
+
+address:
+  - use: "work"
+    city: .provider_business_practice_location_address_city_name
+    country: .provider_business_practice_location_address_country_code_if_out
+    line:
+      - .provider_first_line_business_practice_location_address
+      - .provider_second_line_business_practice_location_address
+    state: .provider_business_practice_location_address_state_name
+    postalCode: .provider_business_practice_location_address_postal_code
+
+contact:
+  - purpose:
+     coding:
+       system: TYPE 
+       code: .authorized_official_title_or_position
+    name: 
+      family: .authorized_official_last_name
+      given:
+        - .authorized_official_first_name
+        - .authorized_official_middle_name
+    telecom:
+      system: phone
+      use: work
+      value: .authorized_official_telephone_number
+
+partOf:
+  display: .parent_organization_lbn
+  # _tin: .parent_organization_tin
