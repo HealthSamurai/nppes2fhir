@@ -232,6 +232,20 @@
   (dump-samples "data/datasample.csv" "sample.yaml")
 
   (dump)
+
+
+  (comment 
+    (spit "/tmp/import.yaml"
+          (clj-yaml.core/generate-string
+           {:id "usnpi"
+            :inputFormat "application/fhir+ndjson"
+            :contentEncoding "gzip"
+            :mode "bulk"
+            :inputs (for [i (range 1 47)]
+                      {:resourceType "Practitioner"
+                       :url (format "https://storage.googleapis.com/aidbox-public/nppes/practitioners-%07d.ndjson.gz" i)})}))
+    )
+
   )
 
 
