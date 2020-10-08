@@ -11,7 +11,7 @@
 (set! *warn-on-reflection* true)
 
 (def nucc-idx
-  (with-open [rdr (io/reader "data/nucc_taxonomy_191.csv")]
+  (with-open [rdr (io/reader "data/nucc_taxonomy.csv")]
     (let [ls (line-seq rdr)]
       (reduce (fn [acc x]
                 (let [data (->> (str/split x #",")
@@ -233,8 +233,7 @@
 
   (dump)
 
-
-  (comment 
+  (comment
     (spit "/tmp/import.yaml"
           (clj-yaml.core/generate-string
            {:id "usnpi"
