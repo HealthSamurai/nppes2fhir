@@ -93,7 +93,7 @@
    ;; "Provider Business Mailing Address Postal Code"
    24 [:address 0  :postalCode]
    ;; "Provider Business Mailing Address Country Code (If outside U.S.)"
-   25 [:address 0 :county]
+   25 [:address 0 :country]
    ;; "Provider Business Mailing Address Telephone Number"
    26 [:phone 0]
    ;; "Provider Business Mailing Address Fax Number"
@@ -110,7 +110,7 @@
    ;; "Provider Business Practice Location Address Postal Code"
    32 [:address 1 :postalCode]
    ;; "Provider Business Practice Location Address Country Code (If outside U.S.)"
-   33 [:address 1 :county]
+   33 [:address 1 :country]
    ;; "Provider Business Practice Location Address Telephone Number"
    34 [:phone 1]
    ;; "Provider Business Practice Location Address Fax Number"
